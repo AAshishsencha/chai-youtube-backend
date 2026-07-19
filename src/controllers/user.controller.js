@@ -168,8 +168,9 @@ const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken:1//this removes fiels from documents
+
             },
         },
         {
@@ -192,7 +193,9 @@ const logoutUser = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incommingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
-    if (incommingRefreshToken) {
+
+    console.log("Incoming Token:", incommingRefreshToken);
+    if (!incommingRefreshToken) {
         throw new ApiError(401, "unauthorized request")
     }
 
@@ -210,7 +213,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             throw new ApiError(401, "invalid Refresh Token")
         }
 
-        if (!incommingRefreshToken !== user?.refreshToken) {
+        if (incommingRefreshToken !== user?.refreshToken) {
             throw new ApiError(401, "Refresh Token is expired or used")
 
         }
@@ -218,14 +221,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         const options = {
             httpOnly: true,
-            secure: trusted
+            secure: true
         }
 
-        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
+        const { accessToken, refreshToken:newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
 
         return res.status(200)
             .cookie("accessToken", accessToken, options)
-            .cookie("refreshToken", refreshToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
             .json(
                 new ApiResponse(
                     200,
